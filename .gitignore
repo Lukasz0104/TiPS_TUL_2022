@@ -1,0 +1,6 @@
+.ignore/**
+.vscode/**
+*.exe
+
+zadanie1/zakodowana.txt
+zadanie1/odkodowana.txt
