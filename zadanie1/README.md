@@ -7,7 +7,7 @@ Obliczany jest iloczyn macierzy kontroli parzystości H ze słowem kodowym. Jeż
 
 ## Macierz G
 Macierz generująca jest postaci 
-![equation](http://www.sciweavers.org/tex2img.php?eq=G%20%3D%20%20%5Cbegin%7Bbmatrix%7D%20I_k%20%7C%20P%20%5Cend%7Bbmatrix%7D&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=0),
+![equation](https://latex.codecogs.com/png.image?\dpi{120}\bg{white}G&space;=&space;&space;\begin{bmatrix}&space;I_k&space;|&space;P&space;\end{bmatrix}),
 gdzie:
 - `k` - liczba bitów informacji,
 - `n` - długość słowa kodowego,
@@ -15,8 +15,8 @@ gdzie:
 - `P` - macierz wymiaru k x (n - k).
 
 ## Macierz H
-Macierz kontroli parzystości H jest postaci:
-![equation](http://www.sciweavers.org/tex2img.php?eq=H%20=%20%20%5Cbegin%7Bbmatrix%7D%20P%5ET%20%7C%20I_%7Bn-k%7D%20%5Cend%7Bbmatrix%7D&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=0)
+Macierz kontroli parzystości H jest postaci
+![equation](https://latex.codecogs.com/png.image?\dpi{120}\bg{white}H&space;=&space;&space;\begin{bmatrix}&space;P^T&space;|&space;I_{n&space;-&space;k}&space;\end{bmatrix}&space;)
 
 Własności macierzy H:
 - nie występuje kolumna składająca się tylko z 0,
