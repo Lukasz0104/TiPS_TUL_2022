@@ -2,6 +2,8 @@
 #include <iostream>
 #include <bitset>
 
+using namespace TiPS::zadanie1;
+
 char menu();
 
 int main()
