@@ -38,7 +38,7 @@ namespace TiPS::zadanie2
 
 		portTimings.ReadIntervalTimeout = 3000;		   //
 		portTimings.ReadTotalTimeoutMultiplier = 3000; //
-		portTimings.ReadTotalTimeoutConstant = 3000;   //
+		portTimings.ReadTotalTimeoutConstant = 7000;   //
 		portTimings.WriteTotalTimeoutMultiplier = 100; //
 		portTimings.WriteTotalTimeoutConstant = 100;   //
 
@@ -53,6 +53,10 @@ namespace TiPS::zadanie2
 
 	void Port::send_message(const char *inFile)
 	{
+		std::cout.setf(std::ios_base::hex, std::ios_base::basefield); // ustaw wyświetlanie liczb w formacie szesnastkowym
+		std::cout.setf(std::ios_base::uppercase);					  // wyświetlaj cyfry szesnastkowe korzystając z wielkich liter
+		std::cout.fill('0');										  // ustaw wypełenienie
+
 		BYTE b = 0;
 		BYTE dataBlockNumber = 1;
 		BYTE complementDataBlockNumber = 254;
@@ -62,21 +66,31 @@ namespace TiPS::zadanie2
 
 		while (b != NAK && b != C)
 		{
-			std::cout << "Czekam na znak " << YELLOW << "C" << RESET << " lub " << RED << "NAK" << RESET << "..." << std::endl;
+			std::cout << "Czekam na znak " << YELLOW << "C" << RESET << " lub " << RED << "NAK" << RESET << "...\n";
 			ReadFile(portHandle, &b, 1, nullptr, nullptr);
 		}
+		std::cout << BLOCK_SEPARATOR;
+
+		PurgeComm(portHandle, PURGE_RXCLEAR | PURGE_TXCLEAR); // wyczyszczenie znaków C/NAK z bufora
 
 		bool CRC = (b == C);
 
 		while (true)
 		{
-			std::cout << "Wysylam naglowek:" << std::endl;
-			std::cout << "| SOH | 0x"
-					  << std::hex << std::setw(2) << std::setfill('0') << int(dataBlockNumber)
-					  << " | 0x" << std::hex << std::setw(2) << std::setfill('0') << int(complementDataBlockNumber)
-					  << " |" << std::endl;
+			std::cout << "Wysylam naglowek:\n| ";
+			if (CRC)
+			{
+				std::cout << YELLOW << "C" << RESET;
+				WriteFile(portHandle, &C, 1, nullptr, nullptr);
+			}
+			else
+			{
+				std::cout << "SOH";
+				WriteFile(portHandle, &SOH, 1, nullptr, nullptr);
+			}
+			std::cout << " | 0x" << std::setw(2) << int(dataBlockNumber)
+					  << " | 0x" << std::setw(2) << int(complementDataBlockNumber) << " |\n";
 
-			WriteFile(portHandle, &SOH, 1, nullptr, nullptr);
 			WriteFile(portHandle, &dataBlockNumber, 1, nullptr, nullptr);
 			WriteFile(portHandle, &complementDataBlockNumber, 1, nullptr, nullptr);
 
@@ -84,15 +98,15 @@ namespace TiPS::zadanie2
 
 			if (file.eof()) // koniec pliku
 			{
-				std::cout << "Osiagnieto koniec pliku, wypelniam pozostale bajty znakami SUB.\n";
+				std::cout << "Osiagnieto koniec pliku, wypelniam pozostale bajty znakami " << YELLOW << "SUB" << RESET << "\n";
 				int count = file.gcount();					  // liczba odczytanych znaków
 				std::fill(buffer + count, buffer + 128, SUB); // wypełnienie znakami SUB
 			}
 
-			std::cout << "Wysylam blok danych" << std::endl;
+			std::cout << "Wysylam blok danych\n";
 			WriteFile(portHandle, buffer, 128, nullptr, nullptr);
 
-			std::cout << "Wysylam sume kontrolna" << std::endl;
+			std::cout << "Wysylam sume kontrolna\n";
 			if (CRC)
 			{
 				uint16_t calculatedCRC = crc(buffer);
@@ -109,12 +123,13 @@ namespace TiPS::zadanie2
 
 			if (b == ACK)
 			{
-				std::cout << "Odebralem znak " << GREEN << "ACK" << RESET << std::endl;
+				std::cout << "Odebralem znak " << GREEN << "ACK" << RESET << '\n';
 				dataBlockNumber++;
 				complementDataBlockNumber = 255 - dataBlockNumber;
 
 				if (file.eof())
 				{
+					std::cout << BLOCK_SEPARATOR;
 					std::cout << "Przeslalem wszystkie bloki, wysylam znak " << GREEN << "EOT" << RESET << ".\n";
 					do
 					{
@@ -139,10 +154,41 @@ namespace TiPS::zadanie2
 
 	void Port::receive_message(const char *outFile, bool CRC)
 	{
+		std::cout.setf(std::ios_base::hex, std::ios_base::basefield); // ustaw wyświetlanie liczb w formacie szesnastkowym
+		std::cout.setf(std::ios_base::uppercase);					  // wyświetlaj cyfry szesnastkowe korzystając z wielkich liter
+		std::cout.fill('0');										  // ustaw wypełenienie
+
 		BYTE b = 0;
 		BYTE dataBlockNumber = 0;
 		BYTE complementDataBlockNumber = 255;
 		BYTE *buffer = new BYTE[128];
+
+		for (int i = 0; i < 6; i++)
+		{
+			if (CRC)
+			{
+				std::cout << "Wysylam znak " << YELLOW << "C" << RESET << "\n";
+				WriteFile(portHandle, &C, 1, nullptr, nullptr);
+				std::cout << "Czekam na znak " << YELLOW << "C" << RESET << " od nadajnika...\n";
+			}
+			else
+			{
+				std::cout << "Wysylam znak " << RED << "NAK" << RESET << "\n";
+				WriteFile(portHandle, &NAK, 1, nullptr, nullptr);
+				std::cout << "Czekam na znak SOH od nadajnika...\n";
+			}
+
+			ReadFile(portHandle, &b, 1, nullptr, nullptr);
+			if (b == SOH || b == C)
+				break;
+		}
+
+		if (b != SOH && b != C)
+		{
+			throw std::runtime_error("Brak odpowiedzi od nadajnika");
+		}
+
+		std::cout << BLOCK_SEPARATOR;
 		std::ofstream file(outFile, std::ios::binary);
 		file.seekp(0);
 
@@ -151,33 +197,20 @@ namespace TiPS::zadanie2
 			throw new std::runtime_error("Nie udalo sie otworzyc pliku do zapisu");
 		}
 
-		while (b != SOH)
-		{
-			if (CRC)
-			{
-				std::cout << "Wysylam znak " << YELLOW << "C" << RESET << "\n";
-				WriteFile(portHandle, &C, 1, nullptr, nullptr);
-			}
-			else
-			{
-				std::cout << "Wysylam znak " << RED << "NAK" << RESET << "\n";
-				WriteFile(portHandle, &NAK, 1, nullptr, nullptr);
-			}
-
-			std::cout << "Czekam na znak SOH od nadajnika..." << std::endl;
-			ReadFile(portHandle, &b, 1, nullptr, nullptr);
-		}
-
 		do
 		{
 			ReadFile(portHandle, &dataBlockNumber, 1, nullptr, nullptr);
 			ReadFile(portHandle, &complementDataBlockNumber, 1, nullptr, nullptr);
 
-			std::cout << "Odebralem naglowek:\n";
-			std::cout << "| SOH | 0x"
-					  << std::hex << std::setw(2) << std::setfill('0') << int(dataBlockNumber)
-					  << " | 0x" << std::hex << std::setw(2) << std::setfill('0') << int(complementDataBlockNumber)
-					  << " |" << std::endl;
+			std::cout << "Odebralem naglowek:\n| ";
+
+			if (b == SOH)
+				std::cout << "SOH";
+			else
+				std::cout << YELLOW << C << RESET;
+
+			std::cout << " | 0x" << std::setw(2) << int(dataBlockNumber) << " | 0x"
+					  << std::setw(2) << int(complementDataBlockNumber) << " |\n";
 
 			std::cout << "Odbieram blok danych\n";
 			ReadFile(portHandle, buffer, 128, nullptr, nullptr); // odczytujemy 128-bajtowy blok danych
@@ -237,7 +270,7 @@ namespace TiPS::zadanie2
 
 		} while (b != EOT);
 
-		std::cout << "Odebralem znak " << GREEN << "EOT" << RESET << ". Wysylam znak " << GREEN << "ACK" << RESET << "\n";
+		std::cout << "Odebralem znak " << GREEN << "EOT" << RESET << "\nWysylam znak " << GREEN << "ACK" << RESET << "\n";
 
 		WriteFile(portHandle, &ACK, 1, nullptr, nullptr);
 

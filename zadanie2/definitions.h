@@ -5,20 +5,20 @@
 
 namespace TiPS::zadanie2
 {
-	const BYTE SOH = 0x01; // Start of Header
-	const BYTE EOT = 0x04; // End of Transmission
-	const BYTE ACK = 0x06; // Acknowledge
-	const BYTE NAK = 0x15; // Not Acknowledge
-	const BYTE CAN = 0x18; // Cancel
-	const BYTE SUB = 0x1A; // Substitute character - znak, którym wypełniany jest niepełny blok
-	const BYTE C = 0x43;   // ASCII 'C'
+	constexpr const BYTE SOH = 0x01; // Start of Header
+	constexpr const BYTE EOT = 0x04; // End of Transmission
+	constexpr const BYTE ACK = 0x06; // Acknowledge
+	constexpr const BYTE NAK = 0x15; // Not Acknowledge
+	constexpr const BYTE CAN = 0x18; // Cancel
+	constexpr const BYTE SUB = 0x1A; // Substitute character - znak, którym wypełniany jest niepełny blok
+	constexpr const BYTE C = 0x43;   // ASCII 'C'
 
-	const char* RED = "\x1B[91m";
-	const char* GREEN = "\x1B[92m";
-	const char* YELLOW = "\x1B[93m";
-	const char* RESET = "\x1B[0m";
+	constexpr const char *RED = "\x1B[91m";
+	constexpr const char *GREEN = "\x1B[92m";
+	constexpr const char *YELLOW = "\x1B[93m";
+	constexpr const char *RESET = "\x1B[0m";
 
-	const char* BLOCK_SEPARATOR = "--------------------\n";
+	constexpr const char *BLOCK_SEPARATOR = "--------------------\n";
 }
 
 #endif // __DEFINITIONS_H__
