@@ -1,6 +1,7 @@
 package pl.lodz.p.it.tips;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -91,5 +92,41 @@ class HuffmanTreeTest {
 
         assertEquals((byte) 'p', root.getRight().getRight().getRight().getLeft().getCharacter());
         assertEquals((byte) 'r', root.getRight().getRight().getRight().getRight().getCharacter());
+    }
+
+    @Test
+    public void nodeEqualsTest() {
+        Node n1 = new Node((byte) 'a', 1);
+        Node n2 = new Node((byte) 'b', 2);
+
+        Node n3 = new Node((byte) 'a', 1);
+        Node n4 = new Node((byte) 'b', 2);
+
+        assertEquals(n1, n1);
+        assertNotEquals(n1, null);
+        assertNotEquals(n1, n2);
+        assertEquals(n1, n3);
+        assertEquals(n2, n4);
+        assertEquals(new Node(n1, n2), new Node(n3, n4));
+    }
+
+    @Test
+    public void toStringTest() {
+        Node root = HuffmanTree.buildTree("go go gophers");
+        assertEquals("1g1o01s1 01e1h01p1r0000", root.toString());
+    }
+
+    @Test
+    public void readTreeTest() {
+        byte[] header = new byte[] {
+                0, 0, 0, 13,
+                0, 0, 0, 8,
+                1, 'g', 1, 'o', 0, 1, 's', 1, ' ', 0, 1, 'e', 1, 'h', 0, 1, 'p', 1, 'r', 0, 0, 0, 0
+        };
+
+        Node n1 = HuffmanTree.buildTree("go go gophers");
+        Node n2 = HuffmanTree.readTree(header);
+
+        assertEquals(n1, n2);
     }
 }
