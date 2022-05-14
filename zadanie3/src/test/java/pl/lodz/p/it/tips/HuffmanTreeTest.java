@@ -1,5 +1,6 @@
 package pl.lodz.p.it.tips;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -118,15 +119,57 @@ class HuffmanTreeTest {
 
     @Test
     public void readTreeTest() {
-        byte[] header = new byte[] {
-                0, 0, 0, 13,
+        byte[] header = new byte[]{
                 0, 0, 0, 8,
                 1, 'g', 1, 'o', 0, 1, 's', 1, ' ', 0, 1, 'e', 1, 'h', 0, 1, 'p', 1, 'r', 0, 0, 0, 0
         };
 
         Node n1 = HuffmanTree.buildTree("go go gophers");
-        Node n2 = HuffmanTree.readTree(header);
+        Node n2 = HuffmanTree.decodeTree(header);
 
         assertEquals(n1, n2);
+    }
+
+    @Test
+    public void countLeavesTest() {
+        Node root1 = HuffmanTree.buildTree("streets are stone stars are not");
+        Node root2 = HuffmanTree.buildTree("go go gophers");
+
+        assertEquals(8, root1.countLeaves());
+        assertEquals(8, root2.countLeaves());
+    }
+
+    @Test
+    public void getByteForPathTest() {
+        Node root = HuffmanTree.buildTree("go go gophers");
+
+        assertEquals('g', root.getByteForPath((byte) 0));
+        assertEquals('o', root.getByteForPath((byte) 0b01000000));
+        assertEquals('h', root.getByteForPath((byte) 0b11010000));
+        assertEquals('p', root.getByteForPath((byte) 0b11100000));
+        assertEquals('r', root.getByteForPath((byte) 0b11110000));
+    }
+
+    @Test
+    public void getPathForCharacterTest() {
+        Node root = HuffmanTree.buildTree("go go gophers");
+
+        assertEquals(0x0200, root.getPathForCharacter((byte) 'g'));
+        assertEquals(0x04d0, root.getPathForCharacter((byte) 'h'));
+        assertEquals(0x03a0, root.getPathForCharacter((byte) ' '));
+    }
+
+    @Test
+    public void encodeTest() {
+        byte[] expected = new byte[]{
+                0, 0, 0, 13, // text length
+                0, 0, 0, 8,  // number of characters
+                1, 'g', 1, 'o', 0, 1, 's', 1, ' ', 0, 1, 'e', 1, 'h', 0, 1, 'p', 1, 'r', 0, 0, 0, 0,
+                0b00_01_101_0, 0b0_01_101_00, 0b01_1110_11, 0b01_1100_11, (byte) 0b11_100_000
+        };
+
+        byte[] actual = HuffmanTree.encode("go go gophers");
+
+        assertArrayEquals(expected, actual);
     }
 }

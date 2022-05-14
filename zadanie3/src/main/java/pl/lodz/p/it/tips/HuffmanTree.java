@@ -16,7 +16,7 @@ public class HuffmanTree {
     /**
      * Builds Huffman Tree for given string.
      *
-     * @param text
+     * @param text String to encode.
      * @return Root of the tree.
      */
     public static Node buildTree(String text) {
@@ -49,16 +49,9 @@ public class HuffmanTree {
         return queue.poll();
     }
 
-    public static Node readTree(byte[] header) {
+    public static Node decodeTree(byte[] header) {
         try (ByteArrayInputStream bais = new ByteArrayInputStream(header)) {
             int b; // variable used to store byte read from the buffer
-
-            int length = 0; // length of the original text
-            for (int i = 0; i < 4; i++) {
-                b = bais.read();
-                length <<= 1;
-                length |= b;
-            }
 
             int numberOfCharacters = 0;
             for (int i = 0; i < 4; i++) {
@@ -101,8 +94,78 @@ public class HuffmanTree {
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
 
+            for (int i = 0; i < 4; i++) {
+                baos.write(length & (0xff << ((3 - i) * 8)));
+            }
 
+            int characterCount = root.countLeaves();
+            for (int i = 0; i < 4; i++) {
+                baos.write(characterCount & (0xff << ((3 - i) * 8)));
+            }
 
+            // region encoding tree
+            // Iterative post-order tree traversal using 2 stacks
+            // @see https://www.geeksforgeeks.org/iterative-postorder-traversal/
+            Stack<Node> first = new Stack<>();
+            Stack<Node> second = new Stack<>();
+
+            first.push(root);
+
+            while (!first.empty()) {
+                Node node = first.pop();
+                second.push(node);
+                if (!node.isLeafNode()) {
+                    first.push(node.getLeft());
+                    first.push(node.getRight());
+                }
+            }
+
+            while (!second.empty()) {
+                Node n = second.pop();
+                if (n.isLeafNode()) {
+                    baos.write(1);
+                    baos.write(n.getCharacter());
+                } else {
+                    baos.write(0);
+                }
+            }
+            // endregion
+
+            int bits = 0;
+            int buff = 0;
+            short pathWithLength;
+            for (byte b : text.getBytes(StandardCharsets.UTF_8)) {
+                pathWithLength = root.getPathForCharacter(b);
+                int len = (pathWithLength & 0xff00) >> 8;
+                short path = (short) (pathWithLength & 0xff);
+
+                if (bits + len <= 8) {
+                    buff = ((buff << len) | (path >> (8 - len)));
+                    bits += len;
+                    if (bits == 8) {
+                        baos.write(buff);
+                        buff = 0;
+                        bits = 0;
+                    }
+                } else {
+                    int c = bits + len - 8;
+                    for (int i = 0; i < c; i++) {
+                        buff = ((buff << 1) | ((path >> (7 - i)) & 1));
+                    }
+                    baos.write(buff);
+                    bits = 0;
+                    buff = 0;
+                    int remaining = len - c;
+                    for (int i = 0; i < remaining; i++) {
+                        buff = ((buff << 1) | ((path >> (7 - remaining - i)) & 1));
+                        bits++;
+                    }
+                }
+            }
+            if (bits < 8) {
+                buff = (buff << (8 - bits));
+                baos.write(buff);
+            }
 
             return baos.toByteArray();
         } catch (IOException ex) {
@@ -127,8 +190,9 @@ public class HuffmanTree {
 
         /**
          * Constructor used for creating leaf nodes.
+         *
          * @param character character (or byte) to store in a leaf
-         * @param value number of occurences
+         * @param value     number of occurences
          */
         public Node(byte character, int value) {
             this.character = character;
@@ -137,6 +201,7 @@ public class HuffmanTree {
 
         /**
          * Constructor used for building tree from header.
+         *
          * @param character character (or byte) to store in a leaf
          */
         public Node(byte character) {
@@ -145,7 +210,8 @@ public class HuffmanTree {
 
         /**
          * Constructor used for creating non-leaf nodes.
-         * @param left Node containing left leaf or subtree
+         *
+         * @param left  Node containing left leaf or subtree
          * @param right Node containing right leaf or subtree
          */
         public Node(Node left, Node right) {
@@ -156,6 +222,64 @@ public class HuffmanTree {
 
         public boolean isLeafNode() {
             return left == null && right == null && character > 0;
+        }
+
+        /**
+         * Traverse the tree and return value at specified leaf.
+         *
+         * @param path Sequence of '1's and '0' determining path to leaf.
+         * @return Byte or character located at given leaf.
+         */
+        public byte getByteForPath(byte path) {
+            Node current = this;
+            while (!current.isLeafNode()) {
+                if ((path & 0xa0) == 0) {
+                    current = current.getLeft();
+                } else {
+                    current = current.getRight();
+                }
+                path <<= 1;
+            }
+            return current.getCharacter();
+        }
+
+        private boolean containsValue(byte ch) {
+            if (isLeafNode()) {
+                return character == ch;
+            }
+            return left.containsValue(ch) || right.containsValue(ch);
+        }
+
+        /**
+         * Finds path to given leaf node.
+         *
+         * @param ch Character in leaf node we want to find path to.
+         * @return Encodes path length in MSB and the actual path in leftmost bits in LSB.
+         */
+        public short getPathForCharacter(byte ch) {
+            short path = 0;
+
+            Node current = this;
+            int depth = 7;
+
+            while (current.character != ch) {
+                if (current.left.containsValue(ch)) {
+                    current = current.left;
+                } else {
+                    path |= (1 << depth);
+                    current = current.right;
+                }
+                depth--;
+            }
+            int len = (7 - depth) * 256;
+            return (short) (len + path);
+        }
+
+        public int countLeaves() {
+            if (isLeafNode()) {
+                return 1;
+            }
+            return left.countLeaves() + right.countLeaves();
         }
 
         @Override
@@ -183,6 +307,7 @@ public class HuffmanTree {
         public int compareTo(Node other) {
             int difference = this.value - other.value;
 
+            // first order by node's value
             if (difference != 0) {
                 return difference;
             }
@@ -199,6 +324,7 @@ public class HuffmanTree {
                 return -1;
             }
 
+            // finally order by ASCII code
             return this.character - other.character;
         }
 
