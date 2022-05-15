@@ -49,16 +49,9 @@ public class HuffmanTree {
         return queue.poll();
     }
 
-    public static Node decodeTree(byte[] header) {
+    public static Node decodeTree(byte[] header, int numberOfCharacters) {
         try (ByteArrayInputStream bais = new ByteArrayInputStream(header)) {
             int b; // variable used to store byte read from the buffer
-
-            int numberOfCharacters = 0;
-            for (int i = 0; i < 4; i++) {
-                b = bais.read();
-                numberOfCharacters <<= 1;
-                numberOfCharacters |= b;
-            }
 
             Stack<Node> nodes = new Stack<>();
 
@@ -88,12 +81,36 @@ public class HuffmanTree {
         return null;
     }
 
+    public static String decode(byte[] encoded) {
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(encoded)) {
+            int textLength = 0;
+            for (int i = 0; i < 4; i++) {
+                textLength = (textLength << 8) | bais.read();
+            }
+
+            int numberOfCharacters = 0;
+            for (int i = 0; i < 4; i++) {
+                numberOfCharacters = (numberOfCharacters << 8) | bais.read();
+            }
+
+            byte[] header = new byte[3 * numberOfCharacters - 1];
+            bais.readNBytes(header, 0, 3 * numberOfCharacters - 1);
+
+            Node root = HuffmanTree.decodeTree(header, numberOfCharacters);
+
+            // TODO decode text
+
+        } catch (IOException ex) {
+            System.out.println(ex.getMessage());
+        }
+        return null;
+    }
+
     public static byte[] encode(String text) {
         Node root = HuffmanTree.buildTree(text);
-        int length = text.length();
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-
+            int length = text.length();
             for (int i = 0; i < 4; i++) {
                 baos.write(length & (0xff << ((3 - i) * 8)));
             }
@@ -103,7 +120,7 @@ public class HuffmanTree {
                 baos.write(characterCount & (0xff << ((3 - i) * 8)));
             }
 
-            // region encoding tree
+            // region encode tree
             // Iterative post-order tree traversal using 2 stacks
             // @see https://www.geeksforgeeks.org/iterative-postorder-traversal/
             Stack<Node> first = new Stack<>();
