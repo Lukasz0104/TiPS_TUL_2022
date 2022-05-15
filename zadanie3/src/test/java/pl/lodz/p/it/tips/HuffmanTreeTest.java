@@ -144,6 +144,9 @@ class HuffmanTreeTest {
 
         assertEquals('g', root.getByteForPath((byte) 0));
         assertEquals('o', root.getByteForPath((byte) 0b01000000));
+        assertEquals('s', root.getByteForPath((byte) 0b10000000));
+        assertEquals(' ', root.getByteForPath((byte) 0b10100000));
+        assertEquals('e', root.getByteForPath((byte) 0b11000000));
         assertEquals('h', root.getByteForPath((byte) 0b11010000));
         assertEquals('p', root.getByteForPath((byte) 0b11100000));
         assertEquals('r', root.getByteForPath((byte) 0b11110000));
@@ -173,7 +176,7 @@ class HuffmanTreeTest {
     }
 
     @Test
-    public void decodeTest() {
+    public void decodeFirstTest() {
         byte[] encoded = new byte[]{
                 0, 0, 0, 13, // text length
                 0, 0, 0, 8,  // number of characters
@@ -184,5 +187,22 @@ class HuffmanTreeTest {
         String decoded = HuffmanTree.decode(encoded);
 
         assertEquals("go go gophers", decoded);
+    }
+
+    @Test
+    public void decodeSecondTest() {
+        System.out.println(HuffmanTree.buildTree("streets are stone stars are not"));
+        byte[] encoded = new byte[]{
+                0, 0, 0, 31,
+                0, 0, 0, 8,
+                1, 't', 1, 'a', 1, 'r', 0, 0, 1, 'n', 1, 'o', 0, 1, ' ', 0, 1, 'e', 1, 's', 0, 0, 0,
+                (byte) 0b111_00_011, (byte) 0b110_110_00, (byte) 0b111_101_01, 0b0_011_110_1,
+                0b01_111_00_1, 0b001_1000_1, (byte) 0b10_101_111, 0b00_010_011,
+                (byte) 0b111_101_01, 0b0_011_110_1, 0b01_1000_10, 0b01_00_0000
+        };
+
+        String decoded = HuffmanTree.decode(encoded);
+
+        assertEquals("streets are stone stars are not", decoded);
     }
 }

@@ -83,6 +83,7 @@ public class HuffmanTree {
 
     public static String decode(byte[] encoded) {
         try (ByteArrayInputStream bais = new ByteArrayInputStream(encoded)) {
+            StringBuilder sb = new StringBuilder();
             int textLength = 0;
             for (int i = 0; i < 4; i++) {
                 textLength = (textLength << 8) | bais.read();
@@ -97,8 +98,39 @@ public class HuffmanTree {
             bais.readNBytes(header, 0, 3 * numberOfCharacters - 1);
 
             Node root = HuffmanTree.decodeTree(header, numberOfCharacters);
+            if (root == null) {
+                throw new RuntimeException("something is wrong");
+            }
 
-            // TODO decode text
+            int charactersRead = 0;
+            short path1 = (short) bais.read();
+            short path2 = (short) bais.read();
+            int bitsRead = 0;
+            int len;
+            while (charactersRead < textLength) {
+                byte character = root.getByteForPath((byte) (path1 & 0xff));
+                len = (root.getPathForCharacter(character) >> 8);
+                bitsRead += len;
+                sb.append((char) character);
+                charactersRead++;
+
+                path1 = (short) ((path1 << len) & 0xff);
+                path1 = (short) (path1 | ((path2 & 0xff) >> (8 - len)));
+                path2 = (short) ((path2 << len) & 0xff);
+
+                if (bitsRead > 7) {
+                    int zeros = bitsRead - 8;
+                    bitsRead -= 8;
+                    path2 = (short) bais.read();
+                    if (path2 == -1) {
+                        path2 = 0;
+                    }
+                    path1 = (short) (path1 | (((path2 >> (8 - zeros)) & 0xff)));
+                    path2 = (short) ((path2 << zeros) & 0xff);
+                }
+            }
+
+            return sb.toString();
 
         } catch (IOException ex) {
             System.out.println(ex.getMessage());
@@ -209,7 +241,7 @@ public class HuffmanTree {
          * Constructor used for creating leaf nodes.
          *
          * @param character character (or byte) to store in a leaf
-         * @param value     number of occurences
+         * @param value     number of occurrences
          */
         public Node(byte character, int value) {
             this.character = character;
@@ -250,7 +282,7 @@ public class HuffmanTree {
         public byte getByteForPath(byte path) {
             Node current = this;
             while (!current.isLeafNode()) {
-                if ((path & 0xa0) == 0) {
+                if ((path & 0x80) == 0) {
                     current = current.getLeft();
                 } else {
                     current = current.getRight();
