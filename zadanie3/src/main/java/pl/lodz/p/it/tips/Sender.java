@@ -1,21 +1,24 @@
 package pl.lodz.p.it.tips;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.OutputStream;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class Sender {
     public static void main(String[] args) {
-        try (Socket socket = new Socket("localhost", 4321);
-             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+        try (Socket socket = new Socket("localhost", 40321);
+             OutputStream out = socket.getOutputStream()) {
 
-            out.println("sending message to server");
-            String response = in.readLine();
-            System.out.println(response);
+            String fileContent = Files.readString(Path.of("in.txt"));
+            System.out.println(fileContent);
 
+            byte[] encoded = HuffmanTree.encode(fileContent);
+            if (encoded == null) {
+                throw new RuntimeException("something is wrong");
+            }
+            out.write(encoded);
         } catch (IOException ex) {
             System.out.println(ex.getMessage());
         }

@@ -98,6 +98,7 @@ public class HuffmanTree {
             bais.readNBytes(header, 0, 3 * numberOfCharacters - 1);
 
             Node root = HuffmanTree.decodeTree(header, numberOfCharacters);
+            System.out.println(root);
             if (root == null) {
                 throw new RuntimeException("something is wrong");
             }
@@ -144,7 +145,7 @@ public class HuffmanTree {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             int length = text.length();
             for (int i = 0; i < 4; i++) {
-                baos.write(length & (0xff << ((3 - i) * 8)));
+                baos.write((length >> (8 * (3 - i))) & 0xff);
             }
 
             int characterCount = root.countLeaves();
