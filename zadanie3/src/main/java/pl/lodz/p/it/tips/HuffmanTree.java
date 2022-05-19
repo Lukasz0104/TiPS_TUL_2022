@@ -82,23 +82,28 @@ public class HuffmanTree {
     }
 
     public static String decode(byte[] encoded) {
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(encoded)) {
-            StringBuilder sb = new StringBuilder();
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(encoded);
+             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             int textLength = 0;
             for (int i = 0; i < 4; i++) {
                 textLength = (textLength << 8) | bais.read();
             }
 
-            int numberOfCharacters = 0;
+            int numberOfNodes = 0;
             for (int i = 0; i < 4; i++) {
+                numberOfNodes = (numberOfNodes << 8) | bais.read();
+            }
+
+            int numberOfCharacters = 0;
+            for (int i = 0; i < 2; i++) {
                 numberOfCharacters = (numberOfCharacters << 8) | bais.read();
             }
 
-            byte[] header = new byte[3 * numberOfCharacters - 1];
-            bais.readNBytes(header, 0, 3 * numberOfCharacters - 1);
+            byte[] header = new byte[numberOfNodes + numberOfCharacters];
+            bais.readNBytes(header, 0, numberOfNodes + numberOfCharacters);
 
             Node root = HuffmanTree.decodeTree(header, numberOfCharacters);
-            System.out.println(root);
+
             if (root == null) {
                 throw new RuntimeException("something is wrong");
             }
@@ -110,11 +115,13 @@ public class HuffmanTree {
             int len;
             while (charactersRead < textLength) {
                 byte character = root.getByteForPath((byte) (path1 & 0xff));
-                len = (root.getPathForCharacter(character) >> 8);
+                len = (root.getPathForCharacter(character) >> 24);
                 bitsRead += len;
-                sb.append((char) character);
+                baos.write(character);
                 charactersRead++;
 
+
+                // Known bug: when path is longer than 8, message is encoded incorrectly
                 path1 = (short) ((path1 << len) & 0xff);
                 path1 = (short) (path1 | ((path2 & 0xff) >> (8 - len)));
                 path2 = (short) ((path2 << len) & 0xff);
@@ -131,7 +138,7 @@ public class HuffmanTree {
                 }
             }
 
-            return sb.toString();
+            return baos.toString(StandardCharsets.UTF_8);
 
         } catch (IOException ex) {
             System.out.println(ex.getMessage());
@@ -148,10 +155,16 @@ public class HuffmanTree {
                 baos.write((length >> (8 * (3 - i))) & 0xff);
             }
 
-            int characterCount = root.countLeaves();
+            int nodeCount = root.countNodes();
             for (int i = 0; i < 4; i++) {
-                baos.write(characterCount & (0xff << ((3 - i) * 8)));
+                baos.write((nodeCount >> (8 * (3 - i))) & 0xff);
             }
+
+            int characterCount = root.countLeaves();
+
+            // we assume characterCount won't exceed 32767
+            baos.write((characterCount & 0xff00) >> 8);
+            baos.write((characterCount & 0xff));
 
             // region encode tree
             // Iterative post-order tree traversal using 2 stacks
@@ -183,14 +196,14 @@ public class HuffmanTree {
 
             int bits = 0;
             int buff = 0;
-            short pathWithLength;
+            int pathWithLength;
             for (byte b : text.getBytes(StandardCharsets.UTF_8)) {
                 pathWithLength = root.getPathForCharacter(b);
-                int len = (pathWithLength & 0xff00) >> 8;
-                short path = (short) (pathWithLength & 0xff);
+                int len = (pathWithLength & 0xff000000) >> 24;
+                int path = pathWithLength & 0xffffff;
 
                 if (bits + len <= 8) {
-                    buff = ((buff << len) | (path >> (8 - len)));
+                    buff = ((buff << len) | (path >> (24 - len)));
                     bits += len;
                     if (bits == 8) {
                         baos.write(buff);
@@ -199,15 +212,15 @@ public class HuffmanTree {
                     }
                 } else {
                     int c = bits + len - 8;
-                    for (int i = 0; i < c; i++) {
-                        buff = ((buff << 1) | ((path >> (7 - i)) & 1));
+                    for (int i = 0; i < 8 - bits; i++) {
+                        buff = ((buff << 1) | ((path >> (23 - i)) & 1));
                     }
                     baos.write(buff);
                     bits = 0;
                     buff = 0;
                     int remaining = len - c;
-                    for (int i = 0; i < remaining; i++) {
-                        buff = ((buff << 1) | ((path >> (7 - remaining - i)) & 1));
+                    for (int i = 0; i < c; i++) {
+                        buff = ((buff << 1) | ((path >> (23 - remaining - i)) & 1));
                         bits++;
                     }
                 }
@@ -304,13 +317,14 @@ public class HuffmanTree {
          * Finds path to given leaf node.
          *
          * @param ch Character in leaf node we want to find path to.
-         * @return Encodes path length in MSB and the actual path in leftmost bits in LSB.
+         * @return Encoded length of the path in bits 23-31
+         * and the actual path in remaining bits starting from bit 22.
          */
-        public short getPathForCharacter(byte ch) {
-            short path = 0;
+        public int getPathForCharacter(byte ch) {
+            int path = 0;
 
             Node current = this;
-            int depth = 7;
+            int depth = 23;
 
             while (current.character != ch) {
                 if (current.left.containsValue(ch)) {
@@ -321,15 +335,26 @@ public class HuffmanTree {
                 }
                 depth--;
             }
-            int len = (7 - depth) * 256;
-            return (short) (len + path);
+            int len = (23 - depth) << 24;
+            return len | path;
         }
 
+        /**
+         * Recursively traverse the tree and return the number of leaf nodes.
+         */
         public int countLeaves() {
             if (isLeafNode()) {
                 return 1;
             }
             return left.countLeaves() + right.countLeaves();
+        }
+
+        public int countNodes() {
+            if (isLeafNode()) {
+                return 1;
+            } else {
+                return 1 + left.countNodes() + right.countNodes();
+            }
         }
 
         @Override
@@ -362,10 +387,12 @@ public class HuffmanTree {
                 return difference;
             }
 
+            // if both are non-leaf, then put them in order that they appear
             if (this.character == 0 && other.character == 0) {
                 return -1;
             }
 
+            // if the first one is non-leaf, then put if after leaf node
             if (this.character == 0) {
                 return 1;
             }

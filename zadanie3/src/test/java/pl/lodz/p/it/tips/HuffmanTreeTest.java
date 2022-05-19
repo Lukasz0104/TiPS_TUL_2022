@@ -156,16 +156,17 @@ class HuffmanTreeTest {
     public void getPathForCharacterTest() {
         Node root = HuffmanTree.buildTree("go go gophers");
 
-        assertEquals(0x0200, root.getPathForCharacter((byte) 'g'));
-        assertEquals(0x04d0, root.getPathForCharacter((byte) 'h'));
-        assertEquals(0x03a0, root.getPathForCharacter((byte) ' '));
+        assertEquals(0x02000000, root.getPathForCharacter((byte) 'g'));
+        assertEquals(0x04d00000, root.getPathForCharacter((byte) 'h'));
+        assertEquals(0x03a00000, root.getPathForCharacter((byte) ' '));
     }
 
     @Test
     public void encodeTest() {
         byte[] expected = new byte[]{
                 0, 0, 0, 13, // text length
-                0, 0, 0, 8,  // number of characters
+                0, 0, 0, 15, // number of nodes
+                0, 8,  // number of characters
                 1, 'g', 1, 'o', 0, 1, 's', 1, ' ', 0, 1, 'e', 1, 'h', 0, 1, 'p', 1, 'r', 0, 0, 0, 0,
                 0b00_01_101_0, 0b0_01_101_00, 0b01_1110_11, 0b01_1100_11, (byte) 0b11_100_000
         };
@@ -176,10 +177,28 @@ class HuffmanTreeTest {
     }
 
     @Test
+    public void encodeSecondTest() {
+        byte[] expected = new byte[]{
+                0, 0, 0, 31,
+                0, 0, 0, 15,
+                0, 8,
+                1, 't', 1, 'a', 1, 'r', 0, 0, 1, 'n', 1, 'o', 0, 1, ' ', 0, 1, 'e', 1, 's', 0, 0, 0,
+                (byte) 0b11100011, (byte) 0b11011000, (byte) 0b11110101, (byte) 0b00111101,
+                (byte) 0b01111001, (byte) 0b00110001, (byte) 0b10101111, (byte) 0b00010011,
+                (byte) 0b11110101, (byte) 0b00111101, (byte) 0b01100010, (byte) 0b01000000
+        };
+
+        byte[] actual = HuffmanTree.encode("streets are stone stars are not");
+
+        assertArrayEquals(expected, actual);
+    }
+
+    @Test
     public void decodeFirstTest() {
         byte[] encoded = new byte[]{
                 0, 0, 0, 13, // text length
-                0, 0, 0, 8,  // number of characters
+                0, 0, 0, 15,
+                0, 8,  // number of characters
                 1, 'g', 1, 'o', 0, 1, 's', 1, ' ', 0, 1, 'e', 1, 'h', 0, 1, 'p', 1, 'r', 0, 0, 0, 0,
                 0b00_01_101_0, 0b0_01_101_00, 0b01_1110_11, 0b01_1100_11, (byte) 0b11_100_000
         };
@@ -191,10 +210,10 @@ class HuffmanTreeTest {
 
     @Test
     public void decodeSecondTest() {
-        System.out.println(HuffmanTree.buildTree("streets are stone stars are not"));
         byte[] encoded = new byte[]{
                 0, 0, 0, 31,
-                0, 0, 0, 8,
+                0, 0, 0, 15,
+                0, 8,
                 1, 't', 1, 'a', 1, 'r', 0, 0, 1, 'n', 1, 'o', 0, 1, ' ', 0, 1, 'e', 1, 's', 0, 0, 0,
                 (byte) 0b111_00_011, (byte) 0b110_110_00, (byte) 0b111_101_01, 0b0_011_110_1,
                 0b01_111_00_1, 0b001_1000_1, (byte) 0b10_101_111, 0b00_010_011,
@@ -204,5 +223,12 @@ class HuffmanTreeTest {
         String decoded = HuffmanTree.decode(encoded);
 
         assertEquals("streets are stone stars are not", decoded);
+    }
+
+    @Test
+    public void countNodesTest() {
+        assertEquals(15, HuffmanTree.buildTree("go go gophers").countNodes());
+        assertEquals(15, HuffmanTree.buildTree("streets are stone stars are not").countNodes());
+        assertEquals(17, HuffmanTree.buildTree("Ala ma kota.").countNodes());
     }
 }
