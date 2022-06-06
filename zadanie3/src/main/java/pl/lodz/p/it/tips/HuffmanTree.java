@@ -120,7 +120,6 @@ public class HuffmanTree {
                 baos.write(character);
                 charactersRead++;
 
-
                 // Known bug: when path is longer than 8, message is encoded incorrectly
                 path1 = (short) ((path1 << len) & 0xff);
                 path1 = (short) (path1 | ((path2 & 0xff) >> (8 - len)));
@@ -318,7 +317,7 @@ public class HuffmanTree {
          *
          * @param ch Character in leaf node we want to find path to.
          * @return Encoded length of the path in bits 23-31
-         * and the actual path in remaining bits starting from bit 22.
+         *         and the actual path in remaining bits starting from bit 22.
          */
         public int getPathForCharacter(byte ch) {
             int path = 0;
