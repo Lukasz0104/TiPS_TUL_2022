@@ -7,7 +7,7 @@ Obliczany jest iloczyn macierzy kontroli parzystości H ze słowem kodowym. Jeż
 
 ## Macierz G
 Macierz generująca jest postaci 
-![equation](https://latex.codecogs.com/png.image?\dpi{120}\bg{white}G&space;=&space;&space;\begin{bmatrix}&space;I_k&space;|&space;P&space;\end{bmatrix}),
+$ G = \begin{bmatrix} I_k | P \end{bmatrix} $,
 gdzie:
 - `k` - liczba bitów informacji,
 - `n` - długość słowa kodowego,
@@ -16,7 +16,7 @@ gdzie:
 
 ## Macierz H
 Macierz kontroli parzystości H jest postaci
-![equation](https://latex.codecogs.com/png.image?\dpi{120}\bg{white}H&space;=&space;&space;\begin{bmatrix}&space;P^T&space;|&space;I_{n&space;-&space;k}&space;\end{bmatrix}&space;)
+$ H = \begin{bmatrix} P^T | I_{n-k}\end{bmatrix} $.
 
 Własności macierzy H:
 - nie występuje kolumna składająca się tylko z 0,
